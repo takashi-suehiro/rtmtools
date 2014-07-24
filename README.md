@@ -1,12 +1,21 @@
 rtmtools
 ==========
-
 tools for OpenRTM mainly based on rtc_handle
+
+rtc_handle provides a proxy class(RtcHandle) for RTC of OpenRTM-aist.
+you can handle RTCs through RtcHandle objects.
 
 Requirements
 -----------------
 
 rtmtools requires OpenRTM-aist-Python 1.x
+
+Copyright
+-------------------
+Copyright (c) 2008-2014 takashi-suehiro, UEC, Japan,  All Rights Reserverd
+
+ Released under the MIT License <http://opensource.org/licenses/MIT> 
+
 
 Files
 ----------------
@@ -35,9 +44,9 @@ rtc_handle.py : basic proxy function for RTC
 
 rtc_handle_util.py : extra utilities
 
-EmbryonicRtc.py : your python will be a RTC after you execute main().
+EmbryonicRtc.py : your python will be an RTC after you execute main().
                   you can create ports dynamically to access ports of
-                  other rtcs.
+                  other RTCs.
                   this is used in rtc_handle to create Pipe objects.
 
 see example script for detail.

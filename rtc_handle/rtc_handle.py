@@ -5,7 +5,7 @@
 import sys
 from omniORB import CORBA, URI
 # from omniORB import any
-from omniORB import any, cdrMarshal, cdrUnmarshal
+from omniORB import any, cdrMarshal, cdrUnmarshal, findType, findTypeCode
 
 import OpenRTM_aist
 import RTC
@@ -62,7 +62,7 @@ class NameSpace :
             return ref
 
     def list_obj(self) :
-        self.rtc_handes = {}
+        self.rtc_handles = {}
         self.obj_list = {}
         return self.list_obj1(self.naming._rootContext, "")
 
@@ -219,7 +219,7 @@ class Port :
         tmp1 = self.get_connections()
         tmp2 = [pp.connector_id for pp in tmp1]
         if self.con.profile.connector_id in tmp2 :
-            print "connecting"
+#            print "connecting", self.con.profile.connector_id, tmp2
             self.con.disconnect()
 
     def get_connections(self) :
@@ -304,9 +304,20 @@ class RtcInport(Port) :
 #        self.data_class = eval('RTC.' + self.prop['dataport.data_type'])
 #        self.data_tc = eval('RTC._tc_' + self.prop['dataport.data_type'])
         tmp=strip_data_class(self.prop['dataport.data_type'])
-        print tmp
-        self.data_class = eval('RTC.' + tmp)
-        self.data_tc = eval('RTC._tc_' + tmp)
+        dtype = findType(self.prop['dataport.data_type'])
+	if isinstance(dtype, tuple):
+            self.data_type=tmp
+            self.data_class = dtype[1]
+            self.data_tc = findTypeCode(self.prop['dataport.data_type'])
+        else:
+            self.data_type=tmp
+            self.data_class = eval('RTC.' + tmp)
+            self.data_tc = eval('RTC._tc_' + tmp)
+
+#        self.data_type=tmp
+#        self.data_class = eval('RTC.' + tmp)
+#        self.data_tc = eval('RTC._tc_' + tmp)
+
     def write(self,data) :
 #        self.ref.put(CORBA.Any(self.data_tc,
 #                         self.data_class(RTC.Time(0,0),data)))
@@ -318,6 +329,9 @@ class RtcInport(Port) :
 
     def close(self) :
         return self.con.disconnect()
+
+    def get_data_type(self) :
+        return self.data_type
 
 class RtcOutport(Port) :
     def __init__(self, profile,nv_dict=None, handle=None) :
@@ -337,8 +351,17 @@ class RtcOutport(Port) :
 #        self.data_class = eval('RTC.' + self.prop['dataport.data_type'])
 #        self.data_tc = eval('RTC._tc_' + self.prop['dataport.data_type'])
         tmp=strip_data_class(self.prop['dataport.data_type'])
-        self.data_class = eval('RTC.' + tmp)
-        self.data_tc = eval('RTC._tc_' + tmp)
+        dtype = findType(self.prop['dataport.data_type'])
+	if isinstance(dtype, tuple):
+            self.data_type=tmp
+            self.data_class = dtype[1]
+            self.data_tc = findTypeCode(self.prop['dataport.data_type'])
+        else:
+            self.data_type=tmp
+            self.data_class = eval('RTC.' + tmp)
+            self.data_tc = eval('RTC._tc_' + tmp)
+#        self.data_class = eval('RTC.' + tmp)
+#        self.data_tc = eval('RTC._tc_' + tmp)
 
     def read(self) :
         if self.ref :
@@ -360,6 +383,9 @@ class RtcOutport(Port) :
 
     def close(self) :
         return self.con.disconnect()
+
+    def get_data_type(self) :
+        return self.data_type
 
 #
 # RtcHandle
@@ -400,7 +426,14 @@ class RtcHandle :
         tmp = pp.get_port_profile()
         tmp_prop = nvlist2dict(tmp.properties)
 #        tmp_name = tmp.name.lstrip(self.name.split('.')[0]).lstrip('.')
-        tmp_name = tmp.name.replace(self.prop['instance_name']+'.','')
+#        tmp_name = tmp.name.replace(self.prop['instance_name']+'.','')
+
+        tmp_name = tmp.name
+	if tmp.name.count('.') > 0:
+            tmp_name = tmp.name.split('.')[1]
+        else:
+            pass
+
         print 'port_name:', tmp_name
 #       self.ports[tmp.name]=Port(tmp, tmp_prop)
         if tmp_prop['port.port_type']=='DataInPort' :
@@ -423,6 +456,21 @@ class RtcHandle :
   def set_conf_activate(self,conf_set_name,param_name,value) :
       self.set_conf(conf_set_name,param_name,value)
       self.conf_ref.activate_configuration_set(conf_set_name)
+  def activate_conf_set(self, conf_set_name) :
+      self.conf_ref.activate_configuration_set(conf_set_name)
+
+  def get_conf_set(self) :
+      try:
+          return self.conf_set.keys()
+      except:
+          return None
+
+  def get_conf_set_params(self, conf_set_name) :
+      try:
+         return self.conf_set_data[conf_set_name].keys()
+      except:
+         return None
+
   def activate(self):
       return self.execution_contexts[0].activate_component(self.rtc_ref)
   def deactivate(self):
@@ -431,6 +479,9 @@ class RtcHandle :
       return self.execution_contexts[0].reset_component(self.rtc_ref)
   def get_state(self):
       return self.execution_contexts[0].get_component_state(self.rtc_ref)
+
+  def exit(self):
+      return self.rtc_ref.exit()
 
 #
 # pipe
