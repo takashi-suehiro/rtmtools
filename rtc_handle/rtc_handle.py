@@ -308,11 +308,14 @@ class IOConnector(Connector) :
 
 class ServiceConnector(Connector) :
     def __init__(self, plist, name = None, id="", prop_dict={}) :
-       self.nego_prop_keys=('port.port_type')
+#       self.nego_prop_keys=['port.port_type']
+#       self.nego_prop_keys=('port.port_type')
+       self.nego_prop_keys=('port.port_type',)
        self.def_prop = {'port.port_type':'CorbaPort' }
        Connector.__init__(self, plist, name, id, prop_dict)
-
+ 
     def nego_prop(self,prop_dict) :
+
        self.possible = True
 
        self.prop_dict_req = self.def_prop.copy()
@@ -322,7 +325,7 @@ class ServiceConnector(Connector) :
 #
        for kk in self.nego_prop_keys :
          for pp in self.plist :  
-           if not ((self.prop_dict_req[kk] in pp.prop[kk]) or 
+            if not ((self.prop_dict_req[kk] in pp.prop[kk]) or 
                                    ('Any' in    pp.prop[kk])) :
              print kk, self.prop_dict_req[kk]
              self.prop_dict_req[kk] = ""
@@ -340,6 +343,7 @@ class Port :
             nv_dict = nvlist2dict(profile.properties)
         self.prop = nv_dict
         self.con = None           # this must be set in each subclasses
+
     def get_info(self) :
         self.con.connect()
         tmp1 = self.get_connections()
@@ -389,7 +393,7 @@ class RtcService(Port) :
     def __init__(self, profile,nv_dict=None, handle=None) :
         Port.__init__(self, profile, nv_dict, handle)
         self.con = ServiceConnector([self])
-#        self.get_info()
+        self.get_info()
         self.provided={}
         self.required={}
         tmp = self.port_profile.interfaces
