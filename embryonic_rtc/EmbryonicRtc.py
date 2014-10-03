@@ -39,6 +39,7 @@ class EmbryonicRtc(OpenRTM_aist.DataFlowComponentBase):
 #
 # you can add Ports and configulations to e_rtc after creating it.
 #
+  """
   def makeInPort(self, name, data, buf) :
     data_name = "_d_" + name
     setattr(self, data_name, data)
@@ -56,7 +57,24 @@ class EmbryonicRtc(OpenRTM_aist.DataFlowComponentBase):
     setattr(self, port_name, port)
     self.registerOutPort(name,  port)
     return port
+  """
+  def makeInPort(self, name, data) :
+    data_name = "_d_" + name
+    setattr(self, data_name, data)
+    port_name = "_" + name + "In"
+    port = OpenRTM_aist.InPort(name, data)
+    setattr(self, port_name, port)
+    self.addInPort(name,  port)
+    return port
 
+  def makeOutPort(self, name, data) :
+    data_name = "_d_" + name
+    setattr(self, data_name, data)
+    port_name = "_" + name + "Out"
+    port = OpenRTM_aist.OutPort(name, data)
+    setattr(self, port_name, port)
+    self.addOutPort(name,  port)
+    return port
 #
 # mk_comp_sample is an example of how to create InPort, Outport,
 # ServicePort.

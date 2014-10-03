@@ -142,29 +142,9 @@ class Connector :
            self.name = name
        else :
            self.name = string.join([tmp.name for tmp in plist],'_')
-       self.prop_dict_req = prop_dict
-       self.prop_nvlist_req = dict2nvlist(self.prop_dict_req)
-       self.profile_req = RTC.ConnectorProfile(self.name, id, self.port_reflist, 
-                          self.prop_nvlist_req)
-       self.nego_prop()
-
-    def nego_prop(self) :
-       self.possible = True
-       for kk in self.def_prop :
-           if kk in self.prop_dict_req :
-               if not self.prop_dict_req[kk] :
-                   self.prop_dict_req[kk]=self.def_prop[kk]
-           else :
-                self.prop_dict_req[kk]=self.def_prop[kk]
-           for pp in self.plist :  
-               if not ((self.prop_dict_req[kk] in pp.prop[kk]) or 
-                                 ('Any' in    pp.prop[kk])) :
-                   print kk, self.prop_dict_req[kk]
-                   self.prop_dict_req[kk] = ""
-                   self.possible = False
-       self.prop_nvlist_req = dict2nvlist(self.prop_dict_req)
-       self.profile_req.properties = self.prop_nvlist_req
-       return self.possible
+       self.nego_prop(prop_dict)
+       self.profile_req = RTC.ConnectorProfile(self.name, id, 
+              self.port_reflist, self.prop_nvlist_req)
 
     def connect(self) :
 #
@@ -188,22 +168,168 @@ class Connector :
        self.connectp = False
        return ret
 
+"""
+OutPortProfile:
+
+Name: cin0.str_out
+Data Type: IDL:RTC/TimedString:1.0
+Interface Type: corba_cdr
+Dataflow Type: pull,push
+Subscription Type: flush,new,periodic
+properties:
+  port.port_type: DataOutPort
+  dataport.data_type: IDL:RTC/TimedString:1.0
+  dataport.subscription_type: flush,new,periodic
+  dataport.dataflow_type: push,pull
+  dataport.interface_type: corba_cdr
+
+InPortProfile:
+
+Name: cout0.str_in
+Data Type: IDL:RTC/TimedString:1.0
+Interface Type: corba_cdr
+Dataflow Type: pull,push
+Subscription Type: Any
+properties:
+  port.port_type: DataInPort
+  dataport.data_type: IDL:RTC/TimedString:1.0
+  dataport.subscription_type: Any
+  dataport.dataflow_type: push,pull
+  dataport.interface_type: corba_cdr
+
+ConnectorProfile:
+
+Connector ID: 6b25330c-493d-11e4-9d86-28d24452aadf
+Name: cin0.str_out_cout0.str_in
+Data Type: IDL:RTC/TimedString:1.0
+Interface Type: corba_cdr
+Dataflow Type: push
+Subscription Type: flush
+Outport Buffer length: 1
+Outport Buffer full policy: overwrite
+Outport Buffer write timeout: 1.0
+Outport Buffer empty polycy: do_nothing
+Outport Buffer read timeout: 1.0
+Inport Buffer length: 1
+Inport Buffer full policy: block
+Inport Buffer write timeout: 1.0
+Inport Buffer empty polycy: readback
+Inport Buffer read timeout: 1.0
+properties:
+  dataport.data_type: IDL:RTC/TimedString:1.0
+  dataport.interface_type: corba_cdr
+  dataport.dataflow_type: push
+  dataport.subscription_type: flush
+  dataport.publisher.push_policy: all
+  dataport.outport.buffer.length: 1
+  dataport.outport.buffer.write.full_policy: overwrite
+  dataport.outport.buffer.write.timeout: 1.0
+  dataport.outport.buffer.read.empty_policy: do_nothing
+  dataport_outport.buffer.read.timeout: 1.0
+  dataport.inport.buffer.length: 1
+  dataport.inport.buffer.write.full_policy: block
+  dataport.inport.buffer.write.timeout: 1.0
+  dataport.inport.buffer.read.empty_policy: readback
+  dataport_inport.buffer.read.timeout: 1.0
+  dataport.serializer.cdr.endian: little,big
+  dataport.corba_cdr.inport_ior: IOR:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  dataport.corba_cdr.inport_ref: 
+
+"""
 class IOConnector(Connector) :
     def __init__(self, plist, name = None, id="", prop_dict={}) :
-#      self.def_prop = {'dataport.dataflow_type':'Push' ,
-#                       'dataport.interface_type':'CORBA_Any' ,
-#                       'dataport.subscription_type':'Flush'}
-       self.def_prop = {'dataport.dataflow_type':'push',
-                        'dataport.interface_type':'corba_cdr' ,
-#                        'dataport.subscription_type':'flush'}
-                        'dataport.subscription_type':'new'}
-       Connector.__init__(self, plist, name, id, prop_dict)
+      self.nego_prop_keys=(
+#        'dataport.data_type',             #
+        'dataport.interface_type',        # corba_cdr
+        'dataport.dataflow_type',         # push, pull, Any 
+        'dataport.subscription_type',     # flush, new, periodic
+      )
+      self.dataport_prop_keys=(
+        'dataport.push_interval',         # [Hz]
+        'dataport.publisher.push_policy', # all, fifo, skip, new
+        'dataport.publisher.skip_cout'   #
+      )
+      self.outport_prop_keys=(
+        'dataport.outport.buffer.length',             #
+        'dataport.outport.buffer.write.full_policy',  # overwrite, do_nothing, block
+        'dataport.outport.buffer.write.timeout',      # [sec]
+        'dataport.outport.buffer.read.empty_policy',  # readback, do_nothing, block
+        'dataport.outport.buffer.read.timeout'        # [sec]
+      )
+      self.inport_prop_keys=(
+        'dataport.inport.buffer.length',             #
+        'dataport.inport.buffer.write.full_policy',  # overwrite, do_nothing, block
+        'dataport.inport.buffer.write.timeout',      # [sec]
+        'dataport.inport.buffer.read.empty_policy',  # readback, do_nothing, block
+        'dataport.inport.buffer.read.timeout'        # [sec]
+      )
+
+      self.def_prop = {
+#        'dataport.data_type':'',
+        'dataport.dataflow_type':'push',
+        'dataport.interface_type':'corba_cdr' ,
+        'dataport.subscription_type':'new',
+        'dataport.publisher.push_policy':'new',
+        'dataport.inport.buffer.length':'1',
+        'dataport.inport.buffer.read.empty_policy':'do_nothing',
+        'dataport.inport.buffer.write.full_policy':'overwrite',
+        'dataport.outport.buffer.length' : '1',
+        'dataport.outport.buffer.write.full_policy':'overwrite',
+        'dataport.outport.buffer.read.empty_policy':'do_nothing'}
+
+      Connector.__init__(self, plist, name, id, prop_dict)
+
+
+    def nego_prop(self,prop_dict) :
+       self.possible = True
+
+       self.prop_dict_req = self.def_prop.copy()
+       if prop_dict :
+         for kk in prop_dict :
+           self.prop_dict_req[kk]=prop_dict[kk]
+#
+       tmp = self.plist[0].get_data_type()
+       for pp in self.plist :
+         if not tmp == pp.get_data_type() :
+             print 'port data_type unmutched'
+             self.possible = False
+       self.prop_dict_req['dataport.data_type']=tmp
+#
+       for kk in self.nego_prop_keys :
+         for pp in self.plist :  
+           if not ((self.prop_dict_req[kk] in pp.prop[kk]) or 
+                                   ('Any' in    pp.prop[kk])) :
+             print kk, self.prop_dict_req[kk]
+             self.prop_dict_req[kk] = ""
+             self.possible = False
+       self.prop_nvlist_req = dict2nvlist(self.prop_dict_req)
+ #      self.profile_req.properties = self.prop_nvlist_req
+       return self.possible
 
 class ServiceConnector(Connector) :
     def __init__(self, plist, name = None, id="", prop_dict={}) :
+       self.nego_prop_keys=('port.port_type')
        self.def_prop = {'port.port_type':'CorbaPort' }
        Connector.__init__(self, plist, name, id, prop_dict)
 
+    def nego_prop(self,prop_dict) :
+       self.possible = True
+
+       self.prop_dict_req = self.def_prop.copy()
+       if prop_dict :
+         for kk in prop_dict :
+           self.prop_dict_req[kk]=prop_dict[kk]
+#
+       for kk in self.nego_prop_keys :
+         for pp in self.plist :  
+           if not ((self.prop_dict_req[kk] in pp.prop[kk]) or 
+                                   ('Any' in    pp.prop[kk])) :
+             print kk, self.prop_dict_req[kk]
+             self.prop_dict_req[kk] = ""
+             self.possible = False
+       self.prop_nvlist_req = dict2nvlist(self.prop_dict_req)
+ #      self.profile_req.properties = self.prop_nvlist_req
+       return self.possible
 
 class Port :
     def __init__(self, profile,nv_dict=None,handle=None) :
@@ -263,7 +389,7 @@ class RtcService(Port) :
     def __init__(self, profile,nv_dict=None, handle=None) :
         Port.__init__(self, profile, nv_dict, handle)
         self.con = ServiceConnector([self])
-        self.get_info()
+#        self.get_info()
         self.provided={}
         self.required={}
         tmp = self.port_profile.interfaces
@@ -286,6 +412,7 @@ class RtcService(Port) :
 
 #    def close(self) :
 #        return self.con.disconnect()
+
 def strip_data_class(data_class_str) :
     tmp = data_class_str.split(':')
     if len(tmp) == 1 :
@@ -297,12 +424,6 @@ def strip_data_class(data_class_str) :
 class RtcInport(Port) :
     def __init__(self, profile, nv_dict=None, handle=None) :
         Port.__init__(self, profile, nv_dict, handle)
-        self.con = IOConnector([self], prop_dict={'dataport.dataflow_type':'push'})
-        self.get_info() 
-#       self.ref = self.con.prop_dict['dataport.corba_any.inport_ref']
-        self.ref = self.con.prop_dict['dataport.corba_cdr.inport_ref']
-#        self.data_class = eval('RTC.' + self.prop['dataport.data_type'])
-#        self.data_tc = eval('RTC._tc_' + self.prop['dataport.data_type'])
         tmp=strip_data_class(self.prop['dataport.data_type'])
         dtype = findType(self.prop['dataport.data_type'])
 	if isinstance(dtype, tuple):
@@ -313,14 +434,9 @@ class RtcInport(Port) :
             self.data_type=tmp
             self.data_class = eval('RTC.' + tmp)
             self.data_tc = eval('RTC._tc_' + tmp)
-
-#        self.data_type=tmp
-#        self.data_class = eval('RTC.' + tmp)
-#        self.data_tc = eval('RTC._tc_' + tmp)
+        self.con = IOConnector([self])
 
     def write(self,data) :
-#        self.ref.put(CORBA.Any(self.data_tc,
-#                         self.data_class(RTC.Time(0,0),data)))
         self.ref.put(cdrMarshal(self.data_tc,
                                 self.data_class(RTC.Time(0,0),data), 1))
     def open(self) :
@@ -336,20 +452,6 @@ class RtcInport(Port) :
 class RtcOutport(Port) :
     def __init__(self, profile,nv_dict=None, handle=None) :
         Port.__init__(self, profile, nv_dict, handle)
-        con_prop_dict={'dataport.dataflow_type':'push',
-		       'dataport.buffer.type':'ringbuffer',
-                       'dataport.buffer.read.empty_policy':'last',
-		       'dataport.buffer.length':'1'}
-        self.con = IOConnector([self], prop_dict=con_prop_dict)
-        self.get_info()
-#        if 'dataport.corba_any.outport_ref' in self.con.prop_dict :
-#          self.ref = self.con.prop_dict['dataport.corba_any.outport_ref']
-        if 'dataport.corba_cdr.outport_ref' in self.con.prop_dict :
-           self.ref = self.con.prop_dict['dataport.corba_cdr.outport_ref']
-        else :
-           self.ref=None
-#        self.data_class = eval('RTC.' + self.prop['dataport.data_type'])
-#        self.data_tc = eval('RTC._tc_' + self.prop['dataport.data_type'])
         tmp=strip_data_class(self.prop['dataport.data_type'])
         dtype = findType(self.prop['dataport.data_type'])
 	if isinstance(dtype, tuple):
@@ -360,8 +462,7 @@ class RtcOutport(Port) :
             self.data_type=tmp
             self.data_class = eval('RTC.' + tmp)
             self.data_tc = eval('RTC._tc_' + tmp)
-#        self.data_class = eval('RTC.' + tmp)
-#        self.data_tc = eval('RTC._tc_' + tmp)
+        self.con = IOConnector([self])
 
     def read(self) :
         if self.ref :
@@ -515,7 +616,8 @@ class InPipe() :
     self.pname=(port.handle.name+port.name).replace('.','_')
 #    self.pipe=comp.makeOutPort(self.pname,port.data_class(RTC.Time(0,0),[]),OpenRTM_aist.RingBuffer(1))
     dd = deep_dummy_data(port.data_tc._d)
-    self.pipe=comp.makeOutPort(self.pname,dd,OpenRTM_aist.RingBuffer(1))
+#    self.pipe=comp.makeOutPort(self.pname,dd,OpenRTM_aist.RingBuffer(1))
+    self.pipe=comp.makeOutPort(self.pname,dd)
     self.buf=getattr(comp,'_d_'+self.pname)
     tmp = self.pipe.getPortProfile()
     self.pipe_port = RtcOutport(tmp, nvlist2dict(tmp.properties))
@@ -534,7 +636,8 @@ class OutPipe() :
     self.pname=(port.handle.name+port.name).replace('.','_')
 #    self.pipe=comp.makeInPort(self.pname,port.data_class(RTC.Time(0,0),[]),OpenRTM_aist.RingBuffer(1))
     dd = deep_dummy_data(port.data_tc._d)
-    self.pipe=comp.makeInPort(self.pname,dd,OpenRTM_aist.RingBuffer(1))
+#    self.pipe=comp.makeInPort(self.pname,dd,OpenRTM_aist.RingBuffer(1))
+    self.pipe=comp.makeInPort(self.pname,dd)
     self.buf=getattr(comp,'_d_'+self.pname)
     tmp = self.pipe.getPortProfile()
     self.pipe_port = RtcInport(tmp, nvlist2dict(tmp.properties))
