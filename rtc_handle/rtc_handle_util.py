@@ -77,13 +77,33 @@ def activate_seq(env, a_seq=None) :
   if a_seq :
     for tmp in a_seq :
       if tmp in env.rtc_dict.keys() :
-        env.rtc_dict[tmp].activate()
+        tmp=env.rtc_dict[tmp]
+        tmp.activate()
       elif isinstance(tmp,RtcHandle) :
         tmp.activate()
-      elif isinstance(tmp, int) :
+      elif isinstance(tmp, (int, float)) :
         time.sleep(tmp)
-      elif isinstance(tmp, float) :
-        time.sleep(tmp)
+      elif isinstance(tmp, (list, tuple)) :
+        if tmp[0] in env.rtc_dict.keys() :
+          tmp0=env.rtc_dict[tmp[0]]
+          tmp[0]=tmp0
+        if isinstance(tmp[0],RtcHandle) :
+          tmp[0].activate()
+          if len(tmp) >=2 and isinstance(tmp[1], (int, float)) :
+            until_time=time.time()+tmp[1]
+            state = tmp[0].get_state()
+#            print until_time
+            while until_time > time.time() :
+#              print time.time()
+              state = tmp[0].get_state()
+              if state == RTC.ACTIVE_STATE :
+#                print state
+                break
+              else :
+                time.sleep(tmp[1]/10.0)
+#              print state
+            if state != RTC.ACTIVE_STATE :
+              raise Exception("activation timeout")
       else :
         eval(tmp)
   else :
