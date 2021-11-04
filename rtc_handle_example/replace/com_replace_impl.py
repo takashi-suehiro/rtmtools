@@ -54,7 +54,7 @@ if __name__ == "__main__":
     objref = servant._this()
     
     # Print a stringified IOR for it
-    print orb.object_to_string(objref)
+    print( orb.object_to_string(objref))
 
     # Activate the Root POA's manager
     poa._get_the_POAManager().activate()

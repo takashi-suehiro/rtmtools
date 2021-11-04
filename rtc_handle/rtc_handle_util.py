@@ -92,16 +92,16 @@ def activate_seq(env, a_seq=None) :
           if len(tmp) >=2 and isinstance(tmp[1], (int, float)) :
             until_time=time.time()+tmp[1]
             state = tmp[0].get_state()
-#            print until_time
+#            print( until_time)
             while until_time > time.time() :
-#              print time.time()
+#              print( time.time())
               state = tmp[0].get_state()
               if state == RTC.ACTIVE_STATE :
-#                print state
+#                print( state)
                 break
               else :
                 time.sleep(tmp[1]/10.0)
-#              print state
+#              print( state)
             if state != RTC.ACTIVE_STATE :
               raise Exception("activation timeout")
       else :

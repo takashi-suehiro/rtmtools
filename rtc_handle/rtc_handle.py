@@ -82,10 +82,10 @@ class NameSpace :
         return rslt
 
     def proc_bd(self, bd, name_context, parent) :
-#        print '-------------------------------------------------------------------'
-#        print 'bd= ', bd
-#        print 'name_context= ', name_context
-#        print 'parent= ', parent
+#        print( '-------------------------------------------------------------------')
+#        print( 'bd= ', bd)
+#        print( 'name_context= ', name_context)
+#        print( 'parent= ', parent)
         rslt = []
         pre = ""
         if parent :
@@ -94,21 +94,21 @@ class NameSpace :
         if bd.binding_type == CosNaming.nobject :
             tmp = name_context.resolve(bd.binding_name)
             self.obj_list[nam]=tmp
-            print 'objcet '+nam+' was listed.'
+            print( 'objcet '+nam+' was listed.')
             try :
                 tmp = tmp._narrow(RTC.RTObject)
             except :
-                print nam+' is not RTC.'
+                print( nam+' is not RTC.')
                 tmp = None
             try :
                 if tmp :
                    rslt = [[nam, tmp]]
                    self.rtc_handles[nam]=RtcHandle(nam,self,tmp)
-                   print 'handle for '+nam+' was created.'
+                   print( 'handle for '+nam+' was created.')
                 else :
                    pass
             except :
-                print nam+' is not alive.' , sys.exc_info()[0]
+                print( nam+' is not alive.' , sys.exc_info()[0])
                 pass
         else :
             tmp = name_context.resolve(bd.binding_name)
@@ -291,7 +291,7 @@ class IOConnector(Connector) :
        tmp = self.plist[0].get_data_type()
        for pp in self.plist :
          if not tmp == pp.get_data_type() :
-             print 'port data_type unmutched'
+             print( 'port data_type unmutched')
              self.possible = False
        self.prop_dict_req['dataport.data_type']=tmp
 #
@@ -299,7 +299,7 @@ class IOConnector(Connector) :
          for pp in self.plist :  
            if not ((self.prop_dict_req[kk] in pp.prop[kk]) or 
                                    ('Any' in    pp.prop[kk])) :
-             print kk, self.prop_dict_req[kk]
+             print( kk, self.prop_dict_req[kk])
              self.prop_dict_req[kk] = ""
              self.possible = False
        self.prop_nvlist_req = dict2nvlist(self.prop_dict_req)
@@ -327,7 +327,7 @@ class ServiceConnector(Connector) :
          for pp in self.plist :  
             if not ((self.prop_dict_req[kk] in pp.prop[kk]) or 
                                    ('Any' in    pp.prop[kk])) :
-             print kk, self.prop_dict_req[kk]
+             print( kk, self.prop_dict_req[kk])
              self.prop_dict_req[kk] = ""
              self.possible = False
        self.prop_nvlist_req = dict2nvlist(self.prop_dict_req)
@@ -349,7 +349,7 @@ class Port :
         tmp1 = self.get_connections()
         tmp2 = [pp.connector_id for pp in tmp1]
         if self.con.profile.connector_id in tmp2 :
-#            print "connecting", self.con.profile.connector_id, tmp2
+#            print( "connecting", self.con.profile.connector_id, tmp2)
             self.con.disconnect()
 
     def get_connections(self) :
@@ -430,7 +430,7 @@ class RtcInport(Port) :
         Port.__init__(self, profile, nv_dict, handle)
         tmp=strip_data_class(self.prop['dataport.data_type'])
         dtype = findType(self.prop['dataport.data_type'])
-	if isinstance(dtype, tuple):
+        if isinstance(dtype, tuple):
             self.data_type=tmp
             self.data_class = dtype[1]
             self.data_tc = findTypeCode(self.prop['dataport.data_type'])
@@ -458,7 +458,7 @@ class RtcOutport(Port) :
         Port.__init__(self, profile, nv_dict, handle)
         tmp=strip_data_class(self.prop['dataport.data_type'])
         dtype = findType(self.prop['dataport.data_type'])
-	if isinstance(dtype, tuple):
+        if isinstance(dtype, tuple):
             self.data_type=tmp
             self.data_class = dtype[1]
             self.data_tc = findTypeCode(self.prop['dataport.data_type'])
@@ -471,14 +471,14 @@ class RtcOutport(Port) :
     def read(self) :
         if self.ref :
            try :
-                tmp1=self.ref.get()
-           	tmp2= cdrUnmarshal(self.data_tc,tmp1[1], 1)
+               tmp1=self.ref.get()
+               tmp2= cdrUnmarshal(self.data_tc,tmp1[1], 1)
 #           return tmp2.data
-           	return tmp2
+               return tmp2
            except :
-                return None
+               return None
         else :
-           print "not supported"
+           print( "not supported")
            return None
 
     def open(self) :
@@ -534,12 +534,12 @@ class RtcHandle :
 #        tmp_name = tmp.name.replace(self.prop['instance_name']+'.','')
 
         tmp_name = tmp.name
-	if tmp.name.count('.') > 0:
+        if tmp.name.count('.') > 0:
             tmp_name = tmp.name.split('.')[1]
         else:
             pass
 
-        print 'port_name:', tmp_name
+        print( 'port_name:', tmp_name)
 #       self.ports[tmp.name]=Port(tmp, tmp_prop)
         if tmp_prop['port.port_type']=='DataInPort' :
             self.inports[tmp_name]=RtcInport(tmp,tmp_prop, self)

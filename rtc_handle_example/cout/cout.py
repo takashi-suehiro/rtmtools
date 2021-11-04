@@ -177,7 +177,7 @@ class cout(OpenRTM_aist.DataFlowComponentBase):
 		"""
 		if self._str_inIn.isNew() :
 			a=self._str_inIn.read()
-			print a.data
+			print( a.data)
 			sys.stdout.flush()
 
 		return RTC.RTC_OK

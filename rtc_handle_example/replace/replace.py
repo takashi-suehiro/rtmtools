@@ -174,7 +174,7 @@ class replace(OpenRTM_aist.DataFlowComponentBase):
 		self.repl_count=0	
 		tmp=self._replace_str[0].split()
 		self.repl_str=[tmp[0],tmp[-1]]
-		print self.repl_str
+		print( self.repl_str)
 		return RTC.RTC_OK
 	
 	#def onDeactivated(self, ec_id):
