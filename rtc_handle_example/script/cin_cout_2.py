@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # -*- Python -*-
 
+#
+# take compatibility betuween python2 and python3
+#
+from builtins import input
+
+#
+#
+
 import sys
 import time
 import subprocess
@@ -34,8 +42,8 @@ sys.path = save_path
 #
 def make_starters(env) :
   env.starters={}
-  env.starters['cin']="cd "+MyRtcDir+"/cin; xterm -e python cin.py"
-  env.starters['cout']="cd "+MyRtcDir+"/cout; xterm -e python cout.py"
+  env.starters['cin']="cd "+MyRtcDir+"/cin; xterm -e python3 cin.py"
+  env.starters['cout']="cd "+MyRtcDir+"/cout; xterm -e python3 cout.py"
 #
 def make_rtc_dict(env) :
   env.rtc_dict={}
@@ -62,7 +70,7 @@ env = RtmEnv(sys.argv,[NS0])
 make_starters(env)
 run_components(env)
 time.sleep(10)
-raw_input("are you sure that each rtc needed is running?")
+input("are you sure that each rtc needed is running?")
 for ns in env.name_space :
   env.name_space[ns].list_obj()
 make_rtc_dict(env)

@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # -*- Python -*-
 
+#
+# take compatibility betuween python2 and python3
+#
+from builtins import input
+
+#
+#
+
 import sys
 import time
 import subprocess
@@ -49,11 +57,12 @@ def make_connectors(env):
 # 
 
 #
-env = RtmEnv(sys.argv,[NS0,NS1])
+# env = RtmEnv(sys.argv,[NS0,NS1])
+env = RtmEnv(sys.argv,[NS0])
 #make_starters(env)
 #run_components(env)
 #time.sleep(10)
-raw_input("are you sure that each rtc needed is running?")
+input("are you sure that each rtc needed is running?")
 for ns in env.name_space :
   env.name_space[ns].list_obj()
 make_rtc_dict(env)

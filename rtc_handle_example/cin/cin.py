@@ -9,8 +9,16 @@
 
 
 """
+#
+# take compatibility betuween python2 and python3
+#
+from builtins import input
+
+#
+#
 import sys
 import time
+
 sys.path.append(".")
 
 # Import RTM module
@@ -175,7 +183,8 @@ class cin(OpenRTM_aist.DataFlowComponentBase):
 		\return RTC::ReturnCode_t
 	
 		"""
-		a=raw_input("input data> ")
+#		a=raw_input("input data> ")
+		a=input("input data> ")
 		self._d_str_out.data=a
 		self._str_outOut.write()
 	

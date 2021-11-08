@@ -82,7 +82,7 @@ class NameSpace :
         return rslt
 
     def proc_bd(self, bd, name_context, parent) :
-#        print( '-------------------------------------------------------------------')
+#        print ('-------------------------------------------------------------------')
 #        print( 'bd= ', bd)
 #        print( 'name_context= ', name_context)
 #        print( 'parent= ', parent)
@@ -97,8 +97,8 @@ class NameSpace :
             print( 'objcet '+nam+' was listed.')
             try :
                 tmp = tmp._narrow(RTC.RTObject)
-            except :
-                print( nam+' is not RTC.')
+            except Exception as e:
+                print( e.args, nam+' is not RTC.')
                 tmp = None
             try :
                 if tmp :
@@ -107,8 +107,8 @@ class NameSpace :
                    print( 'handle for '+nam+' was created.')
                 else :
                    pass
-            except :
-                print( nam+' is not alive.' , sys.exc_info()[0])
+            except Exception as e:
+                print(e.args, nam+' is not alive.' , sys.exc_info()[0])
                 pass
         else :
             tmp = name_context.resolve(bd.binding_name)
@@ -141,16 +141,17 @@ class Connector :
        if name :
            self.name = name
        else :
-           self.name = string.join([tmp.name for tmp in plist],'_')
+#           self.name = string.join([tmp.name for tmp in plist],'_')
+           self.name = '_'.join([tmp.name for tmp in plist])
        self.nego_prop(prop_dict)
        self.profile_req = RTC.ConnectorProfile(self.name, id, 
               self.port_reflist, self.prop_nvlist_req)
 
-    def connect(self) :
+    def connect(self, force=False) :
 #
 #   out and inout parameters are retuned as a tuple   
 #
-       if self.connectp == False :
+       if force or (self.connectp == False) :
           ret, self.profile = self.port_reflist[0].connect(self.profile_req)
           self.prop_nvlist = self.profile.properties
           self.prop_dict = nvlist2dict(self.prop_nvlist)
@@ -160,13 +161,14 @@ class Connector :
           ret = "?"
        return ret
 
-    def disconnect(self) :
-       if self.connectp == True :
-           ret = self.port_reflist[0].disconnect(self.profile.connector_id)
-       else :
-           ret = "?"
-       self.connectp = False
-       return ret
+    def disconnect(self, force=False) :
+
+        if force or (self.connectp == True) :
+                ret = self.port_reflist[0].disconnect(self.profile.connector_id)
+        else :
+            ret = "?"
+        self.connectp = False
+        return ret
 
 """
 OutPortProfile:
@@ -355,6 +357,20 @@ class Port :
     def get_connections(self) :
         return self.port_profile.port_ref.get_connector_profiles()
 
+    def disconnect_all(self) :
+        connectors = self.get_connections()
+        err = 0
+        for con in connectors :
+            try :
+                ret = con.ports[0].disconnect(con.connector_id)
+            except Exception as e :
+                print(e)
+                err += 1
+        if err > 0 :
+            return -1
+        else :
+            return ret
+
 class CorbaServer :
     def __init__(self, profile, port) :
         self.profile = profile
@@ -430,7 +446,7 @@ class RtcInport(Port) :
         Port.__init__(self, profile, nv_dict, handle)
         tmp=strip_data_class(self.prop['dataport.data_type'])
         dtype = findType(self.prop['dataport.data_type'])
-        if isinstance(dtype, tuple):
+        if isinstance(dtype, tuple) :
             self.data_type=tmp
             self.data_class = dtype[1]
             self.data_tc = findTypeCode(self.prop['dataport.data_type'])
@@ -458,7 +474,7 @@ class RtcOutport(Port) :
         Port.__init__(self, profile, nv_dict, handle)
         tmp=strip_data_class(self.prop['dataport.data_type'])
         dtype = findType(self.prop['dataport.data_type'])
-        if isinstance(dtype, tuple):
+        if isinstance(dtype, tuple) :
             self.data_type=tmp
             self.data_class = dtype[1]
             self.data_tc = findTypeCode(self.prop['dataport.data_type'])
@@ -471,12 +487,12 @@ class RtcOutport(Port) :
     def read(self) :
         if self.ref :
            try :
-               tmp1=self.ref.get()
-               tmp2= cdrUnmarshal(self.data_tc,tmp1[1], 1)
+                tmp1=self.ref.get()
+                tmp2= cdrUnmarshal(self.data_tc,tmp1[1], 1)
 #           return tmp2.data
-               return tmp2
+                return tmp2
            except :
-               return None
+                return None
         else :
            print( "not supported")
            return None
@@ -597,13 +613,14 @@ class RtcHandle :
 #  
 #
 def shallow_dummy_data(tc) :
-    return apply(tc._d[1],[ None for xx in range(tc.member_count())])
-
+#    return apply(tc._d[1],[ None for xx in range(tc.member_count())])
+    return tc._d[1](*[ None for xx in range(tc.member_count())])
 def deep_dummy_data(tcd) :
     if not isinstance(tcd,tuple) :
         return tcd
     elif tcd[0] == 15 :
-        return apply(tcd[1],[deep_dummy_data(tcd[5+2*x]) for x in range((len(tcd)-4)/2)])
+#        return apply(tcd[1],[deep_dummy_data(tcd[5+2*x]) for x in range((len(tcd)-4)/2)])
+        return tcd[1](*[deep_dummy_data(tcd[5+2*x]) for x in range(int((len(tcd)-4)/2))])
     elif tcd[0] == 19 :
         return [deep_dummy_data(tcd[1+x]) for x in range(len(tcd)-2)]
     elif tcd[0] == 18 :
