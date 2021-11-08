@@ -15,6 +15,28 @@ from CorbaNaming import *
 import SDOPackage
 # from EmbryonicRtc import *
 
+#
+# helper functions
+#
+#  comparison of corba object references
+#
+def is_included(a_ref, reflist) :
+    for ref in reflist :
+        if a_ref._is_equivalent(ref) :
+            return True
+    return False
+#
+def is_ge_refset(refs1, refs2) :
+    for ref in refs2 :
+        if not is_included(ref, refs1) :
+            return False
+    return True
+#
+def is_equiv_refs(refs1, refs2) :
+    if not len(refs1) == len(refs2) :
+        return False
+    return is_ge_refset(refs1, refs2)
+
 # class RtmEnv :
 #       rtm environment manager
 #       orb, naming service, rtc proxy list
@@ -135,40 +157,55 @@ def dict2nvlist(dict) :
 
 class Connector :
     def __init__(self, plist, name = None, id="", prop_dict={}) :
-       self.connectp=False
-       self.plist = plist
-       self.port_reflist = [tmp.port_profile.port_ref for tmp in plist]
-       if name :
+        self.profile = None
+        self.connectp=False
+        self.plist = plist
+        self.port_reflist = [tmp.port_profile.port_ref for tmp in plist]
+        if name :
            self.name = name
-       else :
+        else :
 #           self.name = string.join([tmp.name for tmp in plist],'_')
            self.name = '_'.join([tmp.name for tmp in plist])
-       self.nego_prop(prop_dict)
-       self.profile_req = RTC.ConnectorProfile(self.name, id, 
+        self.nego_prop(prop_dict)
+        self.profile_req = RTC.ConnectorProfile(self.name, id, 
               self.port_reflist, self.prop_nvlist_req)
 
     def connect(self, force=False) :
-#
-#   out and inout parameters are retuned as a tuple   
-#
-       if force or (self.connectp == False) :
-          ret, self.profile = self.port_reflist[0].connect(self.profile_req)
-          self.prop_nvlist = self.profile.properties
-          self.prop_dict = nvlist2dict(self.prop_nvlist)
-          if ret == RTC.RTC_OK :
-              self.connectp=True
-       else :
-          ret = "?"
-       return ret
+        conlist = self.plist[0].get_connections()
+        if conlist :
+            for con in conlist :
+                if is_equiv_refs(self.port_reflist, con.ports) :
+                    if self.profile and (self.profile.connector_id == con.connector_id) :
+                        print('already connected')
+                        return 'OK'
+                    elif force :
+                        self.port_reflist[0].disconnect(con.connector_id)
+                    else :
+                        print('there exists another connection. please try force=True.')
+                        return 'NO'
+        ret, self.profile = self.port_reflist[0].connect(self.profile_req)
+        self.prop_nvlist = self.profile.properties
+        self.prop_dict = nvlist2dict(self.prop_nvlist)
+        return ret
 
     def disconnect(self, force=False) :
-
-        if force or (self.connectp == True) :
-                ret = self.port_reflist[0].disconnect(self.profile.connector_id)
+        conlist = self.plist[0].get_connections()        
+        if conlist :
+            for con in conlist :
+                if is_equiv_refs(self.port_reflist, con.ports) :
+                    if self.profile and (self.profile.connector_id == con.connector_id) :
+                        ret = self.port_reflist[0].disconnect(self.profile.connector_id)
+                        self.profile = None
+                        return ret
+                    elif force :
+                        self.port_reflist[0].disconnect(con.connector_id)
+                    else :
+                        print('there exists another connection. please try force=True.')
+                        return 'NO'
         else :
-            ret = "?"
-        self.connectp = False
-        return ret
+            print('no connection exits.')
+            self.profile = None
+            return 'No'
 
 """
 OutPortProfile:
@@ -347,12 +384,12 @@ class Port :
         self.con = None           # this must be set in each subclasses
 
     def get_info(self) :
-        self.con.connect()
+        self.con.connect(force=True)
         tmp1 = self.get_connections()
         tmp2 = [pp.connector_id for pp in tmp1]
         if self.con.profile.connector_id in tmp2 :
 #            print( "connecting", self.con.profile.connector_id, tmp2)
-            self.con.disconnect()
+            self.con.disconnect(force=True)
 
     def get_connections(self) :
         return self.port_profile.port_ref.get_connector_profiles()
@@ -457,14 +494,17 @@ class RtcInport(Port) :
         self.con = IOConnector([self])
 
     def write(self,data) :
-        self.ref.put(cdrMarshal(self.data_tc,
+        ret = self.ref.put(cdrMarshal(self.data_tc,
                                 self.data_class(RTC.Time(0,0),data), 1))
+        return ret
+        
     def open(self) :
-        self.con.connect()
+        ret = self.con.connect(force=True)
         self.ref = self.con.prop_dict['dataport.corba_cdr.inport_ref']
+        return ret
 
     def close(self) :
-        return self.con.disconnect()
+        return self.con.disconnect(force=True)
 
     def get_data_type(self) :
         return self.data_type
@@ -482,15 +522,16 @@ class RtcOutport(Port) :
             self.data_type=tmp
             self.data_class = eval('RTC.' + tmp)
             self.data_tc = eval('RTC._tc_' + tmp)
-        self.con = IOConnector([self])
+        p_dict={'dataport.dataflow_type':'pull'}             
+        self.con = IOConnector([self],prop_dict=p_dict)
 
     def read(self) :
         if self.ref :
            try :
                 tmp1=self.ref.get()
                 tmp2= cdrUnmarshal(self.data_tc,tmp1[1], 1)
-#           return tmp2.data
-                return tmp2
+                return tmp2.data
+                # return tmp2
            except :
                 return None
         else :
@@ -498,12 +539,13 @@ class RtcOutport(Port) :
            return None
 
     def open(self) :
-        self.con.connect()
+        ret = self.con.connect(force=True)
         if 'dataport.corba_cdr.outport_ref' in self.con.prop_dict :
            self.ref = self.con.prop_dict['dataport.corba_cdr.outport_ref']
+        return ret
 
     def close(self) :
-        return self.con.disconnect()
+        return self.con.disconnect(force=True)
 
     def get_data_type(self) :
         return self.data_type
